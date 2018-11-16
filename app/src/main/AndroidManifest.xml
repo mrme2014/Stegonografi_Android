@@ -28,6 +28,8 @@
         </activity>
         <activity android:name=".encode_process" />
         <activity android:name=".decode_process" />
+        <activity android:name="com.sample.EncodeProcessImpl" />
+        <activity android:name="com.sample.DecodeProcessImpl" />
         <activity android:name=".Help" />
         <activity android:name=".Help1" />
         <activity android:name=".Help2" />

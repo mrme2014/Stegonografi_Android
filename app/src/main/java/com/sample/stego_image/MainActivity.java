@@ -16,6 +16,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.sample.DecodeProcessImpl;
+import com.sample.EncodeProcessImpl;
+
 import java.io.File;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
@@ -31,7 +34,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-            this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
+                this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.setDrawerListener(toggle);
         toggle.syncState();
 
@@ -91,19 +94,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if (id == R.id.bEncoding) { //masuk ke encoding
 
-            Intent intent = new Intent(this, encode_process.class);
+            Intent intent = new Intent(this, EncodeProcessImpl.class);
             startActivity(intent);
 
         } else if (id == R.id.bDecoding) { //masuk ke decoding
 
-            Intent intent1  = new Intent(this, decode_process.class);
+            Intent intent1 = new Intent(this, DecodeProcessImpl.class);
             startActivity(intent1);
 
         } else if (id == R.id.bStego_image) { //untuk masuk kedalam es file exploere
 
             Intent intent = getPackageManager().getLaunchIntentForPackage("com.estrongs.android.pop");
             File localFile1 = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "Image-Stego");
-            if (intent != null ) {
+            if (intent != null) {
                 // We found the activity now start the activity
                 if (localFile1.canRead()) {
                     Uri uri = Uri.parse("/sdcard/Pictures/Image-Stego"); // a directory
@@ -111,9 +114,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
                     startActivity(intent);
-                }
-
-                else {
+                } else {
                     localFile1.mkdir();
                     Toast.makeText(this, "Folder Image-Stego Created", Toast.LENGTH_SHORT).show();
                 }
@@ -126,7 +127,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 intent.setData(Uri.parse("market://details?id=" + "com.estrongs.android.pop")); //masuk ke google play store
                 startActivity(intent);
             }
-
 
 
         } else if (id == R.id.bHelp) { //masuk ke intent help
