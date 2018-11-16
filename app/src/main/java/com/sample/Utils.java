@@ -1,6 +1,7 @@
 package com.sample;
 
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -44,7 +45,13 @@ public class Utils {
 
     private static void setBitmapPixel(Bitmap bitmap, int i, int j, int alpha, int red, int green, int blue) {
         int rgba = (alpha << 24) | (red << 16) | (green << 8) | (blue);
-        bitmap.setPixel(j, i, rgba);
+        Log.e(TAG, "setBitmapPixel: " + rgba + "-->" + Integer.toBinaryString(red) + "--" + Integer.toBinaryString(green) + "--" + Integer.toBinaryString(blue));
+
+        int pixel = bitmap.getPixel(i, j);
+        bitmap.setPixel(i, j, rgba);
+        int pixel2 = bitmap.getPixel(i, j);
+
+        Log.e(TAG, "setBitmapPixel: " + pixel + "--->" + pixel2);
     }
 
     //把int值转换成32位的二进制
@@ -61,7 +68,7 @@ public class Utils {
         if (TextUtils.isEmpty(binaryString))
             return null;
 
-        Bitmap mutable = bitmap.copy(Bitmap.Config.ARGB_8888, true);
+        Bitmap mutable = bitmap.copy(bitmap.getConfig(), true);
 
         int bitWidth = mutable.getWidth();
         int bitHeight = mutable.getHeight();
@@ -77,9 +84,9 @@ public class Utils {
         int curPixelIndex = 0;
         StringBuilder sb = new StringBuilder();
 
-        for (int i = 0; i < bitWidth; i++) {
-            for (int j = 0; j < bitHeight; j++) {
-                int pixel = mutable.getPixel(i, j);
+        for (int i = 0; i < bitHeight; i++) {
+            for (int j = 0; j < bitWidth; j++) {
+                int pixel = mutable.getPixel(j, i);
                 int alpha = (pixel >> 24) & 0xff;
                 int redPixel = (pixel >> 16) & 0xff;
                 int greenPixel = (pixel >> 8) & 0xff;
@@ -89,11 +96,13 @@ public class Utils {
                 String greenBinary = Integer.toBinaryString(greenPixel);
                 String blueBinary = Integer.toBinaryString(bluePixel);
 
+                Log.e(TAG, "insertMessage: " + pixel + "--" + redBinary + "--" + greenBinary + "--" + blueBinary);
                 int index = curPixelIndex == 0 ? 0 : curPixelIndex++;
                 if (curPixelIndex >= requirePixel) {
-                    setBitmapPixel(mutable, i, j, alpha, redPixel, greenPixel, bluePixel);
+                    setBitmapPixel(mutable, j, i, alpha, redPixel, greenPixel, bluePixel);
                     break;
                 }
+
                 char rchar = chars[index];
                 sb.append(rchar);
                 char[] redChars = redBinary.toCharArray();
@@ -101,10 +110,9 @@ public class Utils {
                 redBinary = new String(redChars);
                 redPixel = Integer.valueOf(redBinary, 2);
 
-
                 curPixelIndex++;
                 if (curPixelIndex >= requirePixel) {
-                    setBitmapPixel(mutable, i, j, alpha, redPixel, greenPixel, bluePixel);
+                    setBitmapPixel(mutable, j, i, alpha, redPixel, greenPixel, bluePixel);
                     break;
                 }
                 char gchar = chars[curPixelIndex];
@@ -114,10 +122,9 @@ public class Utils {
                 greenBinary = new String(greenChars);
                 greenPixel = Integer.valueOf(greenBinary, 2);
 
-
                 curPixelIndex++;
                 if (curPixelIndex >= requirePixel) {
-                    setBitmapPixel(mutable, i, j, alpha, redPixel, greenPixel, bluePixel);
+                    setBitmapPixel(mutable, j, i, alpha, redPixel, greenPixel, bluePixel);
                     break;
                 }
                 char bchar = chars[curPixelIndex];
@@ -126,11 +133,25 @@ public class Utils {
                 blueChars[blueChars.length - 1] = bchar;
                 blueBinary = new String(blueChars);
                 bluePixel = Integer.valueOf(blueBinary, 2);
-                setBitmapPixel(mutable, i, j, alpha, redPixel, greenPixel, bluePixel);
+                setBitmapPixel(mutable, j, i, alpha, redPixel, greenPixel, bluePixel);
             }
         }
 
         Log.e(TAG, "insertMessage: " + sb.toString());
+
+//        int[] pixels = new int[bitWidth * bitHeight];
+//        mutable.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, bitHeight);
+//        int line = 0;
+//        StringBuilder stringBuilder = new StringBuilder();
+//        for (int pix : pixels) {
+//            line++;
+//            if (line % bitWidth == 0) {
+//                stringBuilder.append("\n");
+//            }
+//            stringBuilder.append(" - ");
+//            stringBuilder.append(Integer.toBinaryString(pix & 0xff));
+//        }
+//        Log.e(TAG, "insertMessage: " + stringBuilder.toString());
         return mutable;
     }
 
@@ -140,6 +161,21 @@ public class Utils {
         int bitWidth = bi.getWidth();
         int bitHeight = bi.getHeight();
 
+//        int[] pixels = new int[bitWidth * bitHeight];
+//        bi.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, bitHeight);
+//        int line = 0;
+//        StringBuilder stringBuilder = new StringBuilder();
+//        for (int pix : pixels) {
+//            line++;
+//            if (line % bitWidth == 0) {
+//                stringBuilder.append("\n");
+//            }
+//            stringBuilder.append(" - ");
+//            stringBuilder.append(Integer.toBinaryString(pix & 0xff));
+//        }
+//        Log.e(TAG, "extractMessage: " + stringBuilder.toString());
+
+
         if (bitWidth * bitHeight * 3 < Integer.SIZE)
             return null;
 
@@ -147,8 +183,10 @@ public class Utils {
         int requirePixel = 0;
         String requirePixelStr = "";
         String extractedBinStr = "";
-        for (int i = 0; i < bitWidth; i++) {
-            for (int j = 0; j < bitHeight; j++) {
+
+        for (int i = 0; i < bitHeight; i++) {
+            for (int j = 0; j < bitWidth; j++) {
+
                 int pixel = bi.getPixel(j, i);
 
                 int redPixel = (pixel >> 16) & 0xff;

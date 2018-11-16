@@ -146,6 +146,11 @@ public class EncodeProcessImpl extends AppCompatActivity implements View.OnClick
         }
 
         Bitmap localBitmap = ((BitmapDrawable) localImageView.getDrawable()).getBitmap();
+        Bitmap copy = localBitmap.copy(localBitmap.getConfig(), true);
+        int pixel = copy.getPixel(0, 0);
+        copy.setPixel(0, 0, -723208);
+        int pixel2 = copy.getPixel(0, 0);
+
         if (localBitmap == null) {
 
             Toast.makeText(getApplicationContext(), "Please attach an image", Toast.LENGTH_LONG).show();
@@ -182,101 +187,6 @@ public class EncodeProcessImpl extends AppCompatActivity implements View.OnClick
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-
-    private Bitmap insertMessage(String encryptedMessage) {
-
-        ImageView ivLoadImg = (ImageView) findViewById(R.id.ivImageEncode);
-        Bitmap bi2 = ((BitmapDrawable) ivLoadImg.getDrawable()).getBitmap();
-        Bitmap bi1 = bi2.copy(Bitmap.Config.ARGB_8888, true);
-
-        int a, b;
-
-        if (bi1.getHeight() < pixel) {
-            a = bi1.getHeight();
-        } else {
-            a = pixel;
-        }
-
-        if (bi1.getWidth() < pixel) {
-            b = bi1.getWidth();
-        } else {
-            b = pixel;
-        }
-
-        Formula sm = new Formula();
-        int charIndex = 0;
-        String r3, g3, b3;
-        int pjgpesan = encryptedMessage.length();
-
-        for (int i = 0; i < a; i++) {
-            // pass through each row
-            for (int j = 0; j < b; j++) {
-                // holds the pixel that is currently being processed
-                int pixel = bi1.getPixel(j, i);
-                // Mengubag semua nilai pixel Lsb menjadi 0
-                int A = (pixel >> 24) & 0xff;
-                int R = (pixel >> 16) & 0xff;
-                int G = (pixel >> 8) & 0xff;
-                int B = (pixel) & 0xff;
-                String r1 = Integer.toBinaryString(R);
-                String g1 = Integer.toBinaryString(G);
-                String b1 = Integer.toBinaryString(B);
-
-                String rr = sm.bintoeightbin(r1);//menjadi binari dengan pjg 8
-                String r2 = rr.substring(0, 7); // mengambil bilai sebanyak 7 dari 8
-                String gg = sm.bintoeightbin(g1);
-                String g2 = gg.substring(0, 7);
-                String bb = sm.bintoeightbin(b1);
-                String b2 = bb.substring(0, 7);
-
-                //red
-                if (charIndex < pjgpesan) {
-                    String PesanR = encryptedMessage.substring(charIndex, charIndex + 1); // index 0, 1 alias indeks ke - 0;
-                    if (Integer.valueOf(PesanR) == 1) {
-                        r3 = r2.concat("1"); //mengganti bit paling belakang menjadi 1
-                    } else {
-                        r3 = r2.concat("0"); //mengganti bit paling belaka menjadi 0
-                    }
-                    R = sm.binarytointeger(r3); // nilai pixel R baru
-                    charIndex++; // char index di tambah sebanyak 1
-                }
-
-                //green
-                if (charIndex < pjgpesan) {
-                    String PesanG = encryptedMessage.substring(charIndex, charIndex + 1); // lnjut dari index atasnya
-                    if (Integer.valueOf(PesanG) == 1) {
-                        g3 = g2.concat("1");
-                    } else {
-                        g3 = g2.concat("0");
-                    }
-                    G = sm.binarytointeger(g3);
-                    charIndex++; //char index di tambah sebanyak 1
-                }
-
-                //blue
-                if (charIndex < pjgpesan) {
-                    String PesanB = encryptedMessage.substring(charIndex, charIndex + 1); // lnjut dari index atasnya
-                    if (Integer.valueOf(PesanB) == 1) {
-                        b3 = b2.concat("1");
-                    } else {
-                        b3 = b2.concat("0");
-                    }
-                    B = sm.binarytointeger(b3);
-                    charIndex++; //char index di tambah sebanyak 1
-                }
-
-                if (charIndex >= pjgpesan) {
-                    return bi1;
-                }
-
-                int rgba = (A << 24) | (R << 16) | (G << 8) | (B); //gabungkan 3  komponen warna
-                bi1.setPixel(j, i, rgba); //settting pixel baru
-
-            }
-        }
-        return bi1;
     }
 
 

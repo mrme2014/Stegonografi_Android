@@ -30,7 +30,7 @@ public class Test {
 //        getString(sb);
         System.out.println(0 & 0);
         System.out.println(0 & 1);
-        System.out.println(Integer.toBinaryString(101 & 0xff));
+        System.out.println(Integer.toBinaryString(101 & 0b111));
         System.out.println(Integer.toBinaryString(100000 & 0xff));
 
         // transformIntTo32BitBinary(1000);
