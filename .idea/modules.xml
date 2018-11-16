@@ -4,6 +4,8 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/Stego_Image.iml" filepath="$PROJECT_DIR$/Stego_Image.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/stegonografi_android.iml" filepath="$PROJECT_DIR$/stegonografi_android.iml" />
     </modules>
   </component>
 </project>
