@@ -44,7 +44,7 @@ public class Utils {
     }
 
     private static void setBitmapPixel(Bitmap bitmap, int i, int j, int alpha, int red, int green, int blue) {
-        int rgba = (alpha << 24) | (red << 16) | (green << 8) | (blue);
+        int rgba = (255) | (red << 16) | (green << 8) | (blue);
         Log.e(TAG, "setBitmapPixel: " + rgba + "-->" + Integer.toBinaryString(red) + "--" + Integer.toBinaryString(green) + "--" + Integer.toBinaryString(blue));
 
         int pixel = bitmap.getPixel(i, j);
@@ -63,6 +63,104 @@ public class Utils {
         return new String(chs);
     }
 
+
+    public static Bitmap insertMessage2(Bitmap bitmap, String text) {
+        String binaryString = str2Binary(text);
+        if (TextUtils.isEmpty(binaryString))
+            return null;
+
+        Bitmap mutable = bitmap.copy(bitmap.getConfig(), true);
+
+        int bitWidth = mutable.getWidth();
+        int bitHeight = mutable.getHeight();
+
+        long l = System.currentTimeMillis();
+        int[] pixels = new int[bitWidth * bitHeight];
+        mutable.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, bitHeight);
+        long l1 = System.currentTimeMillis();
+        Log.e(TAG, "insertMessage:cost time :" + (l1 - l));
+
+        String sizeBin = transformIntTo32BitBinary(binaryString.length());
+        String actualBinaryString = sizeBin + binaryString;
+        int actualBinLen = actualBinaryString.length();
+
+        //最低位有效
+        if (bitWidth * bitHeight * 3 < actualBinLen)
+            return mutable;
+
+        int requirePixel = actualBinLen;
+        char[] chars = actualBinaryString.toCharArray();
+        int curPixelIndex = -1;
+        StringBuilder binarybuilder = new StringBuilder();
+        StringBuilder charbuilder = new StringBuilder();
+        for (int i = 0; i < requirePixel; i++) {
+            int pixel = pixels[i];
+
+            int alpha = (pixel >> 24) & 0xff;
+            int redPixel = (pixel >> 16) & 0xff;
+            int greenPixel = (pixel >> 8) & 0xff;
+            int bluePixel = (pixel) & 0xff;
+
+            String redBinary = Integer.toBinaryString(redPixel);
+            String greenBinary = Integer.toBinaryString(greenPixel);
+            String blueBinary = Integer.toBinaryString(bluePixel);
+
+            curPixelIndex++;
+            if (curPixelIndex >= requirePixel) {
+                int color = Color.argb(alpha, redPixel, greenPixel, bluePixel);
+                pixels[i] = color;
+                binarybuilder.append(redBinary + "-->" + greenBinary + "-->" + blueBinary);
+                break;
+            }
+
+            char rChar = chars[curPixelIndex];
+            redBinary = redBinary.substring(0, redBinary.length() - 1) + rChar;
+            redPixel = Integer.valueOf(redBinary, 2);
+            charbuilder.append(rChar);
+            curPixelIndex++;
+            if (curPixelIndex >= requirePixel) {
+                int color = Color.argb(alpha, redPixel, greenPixel, bluePixel);
+                pixels[i] = color;
+                binarybuilder.append(redBinary + "-->" + greenBinary + "-->" + blueBinary);
+                break;
+            }
+
+            char gChar = chars[curPixelIndex];
+            greenBinary = greenBinary.substring(0, greenBinary.length() - 1) + gChar;
+            greenPixel = Integer.valueOf(greenBinary, 2);
+            charbuilder.append(gChar);
+            curPixelIndex++;
+            if (curPixelIndex >= requirePixel) {
+                int color = Color.argb(alpha, redPixel, greenPixel, bluePixel);
+                pixels[i] = color;
+                binarybuilder.append(redBinary + "-->" + greenBinary + "-->" + blueBinary);
+                break;
+            }
+
+            char bChar = chars[curPixelIndex];
+            blueBinary = blueBinary.substring(0, blueBinary.length() - 1) + bChar;
+            bluePixel = Integer.valueOf(blueBinary, 2);
+            int color = Color.argb(alpha, redPixel, greenPixel, bluePixel);
+            pixels[i] = color;
+            charbuilder.append(bChar);
+            binarybuilder.append(redBinary + "-->" + greenBinary + "-->" + blueBinary + "-->");
+
+        }
+
+        String checkString = charbuilder.toString();
+        Log.e(TAG, "insertMessage2: " + TextUtils.equals(checkString, actualBinaryString));
+
+        Bitmap bitmap1 = Bitmap.createBitmap(pixels, bitWidth, bitHeight, mutable.getConfig());
+//        for (int i = 0; i < bitHeight; i++) {
+//            for (int j = 0; j < bitWidth; j++) {
+//                int pix = bitmap1.getPixel(j, i);
+//                Log.e(TAG, "insertMessage2: " + ((i + 1) * j) + "--" + pix + "---" + pixels[(i + 1) * j]);
+//            }
+//        }
+        return bitmap1;
+    }
+
+
     public static Bitmap insertMessage(Bitmap bitmap, String text) {
         String binaryString = str2Binary(text);
         if (TextUtils.isEmpty(binaryString))
@@ -72,6 +170,13 @@ public class Utils {
 
         int bitWidth = mutable.getWidth();
         int bitHeight = mutable.getHeight();
+
+        long l = System.currentTimeMillis();
+        int[] pixels = new int[bitWidth * bitHeight];
+        mutable.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, bitHeight);
+        long l1 = System.currentTimeMillis();
+        Log.e(TAG, "insertMessage:cost time :" + (l1 - l));
+
         String actualBinaryString = transformIntTo32BitBinary(binaryString.length()) + binaryString;
         int actualBinLen = actualBinaryString.length();
 
@@ -104,7 +209,6 @@ public class Utils {
                 }
 
                 char rchar = chars[index];
-                sb.append(rchar);
                 char[] redChars = redBinary.toCharArray();
                 redChars[redChars.length - 1] = rchar;
                 redBinary = new String(redChars);
@@ -116,7 +220,6 @@ public class Utils {
                     break;
                 }
                 char gchar = chars[curPixelIndex];
-                sb.append(gchar);
                 char[] greenChars = greenBinary.toCharArray();
                 greenChars[greenChars.length - 1] = gchar;
                 greenBinary = new String(greenChars);
@@ -139,19 +242,6 @@ public class Utils {
 
         Log.e(TAG, "insertMessage: " + sb.toString());
 
-//        int[] pixels = new int[bitWidth * bitHeight];
-//        mutable.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, bitHeight);
-//        int line = 0;
-//        StringBuilder stringBuilder = new StringBuilder();
-//        for (int pix : pixels) {
-//            line++;
-//            if (line % bitWidth == 0) {
-//                stringBuilder.append("\n");
-//            }
-//            stringBuilder.append(" - ");
-//            stringBuilder.append(Integer.toBinaryString(pix & 0xff));
-//        }
-//        Log.e(TAG, "insertMessage: " + stringBuilder.toString());
         return mutable;
     }
 
@@ -161,82 +251,100 @@ public class Utils {
         int bitWidth = bi.getWidth();
         int bitHeight = bi.getHeight();
 
-//        int[] pixels = new int[bitWidth * bitHeight];
-//        bi.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, bitHeight);
-//        int line = 0;
-//        StringBuilder stringBuilder = new StringBuilder();
-//        for (int pix : pixels) {
-//            line++;
-//            if (line % bitWidth == 0) {
-//                stringBuilder.append("\n");
-//            }
-//            stringBuilder.append(" - ");
-//            stringBuilder.append(Integer.toBinaryString(pix & 0xff));
-//        }
-//        Log.e(TAG, "extractMessage: " + stringBuilder.toString());
-
 
         if (bitWidth * bitHeight * 3 < Integer.SIZE)
             return null;
 
         int curIndex = 0;
-        int requirePixel = 0;
+        int requirePixel = Integer.SIZE;
         String requirePixelStr = "";
         String extractedBinStr = "";
 
+        StringBuilder checkBuild = new StringBuilder();
+        long l = System.currentTimeMillis();
+        int[] pixels = new int[bitWidth * bitHeight];
+        bi.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, bitHeight);
+        long l1 = System.currentTimeMillis();
+//
+//        for (int i = 0; i < 30; i++) {
+//            int pixel = pixels[i];
+//
+//            int alpha = (pixel >> 24) & 0xff;
+//            int redPixel = (pixel >> 16) & 0xff;
+//            int greenPixel = (pixel >> 8) & 0xff;
+//            int bluePixel = (pixel) & 0xff;
+//
+//            String redBinary = Integer.toBinaryString(redPixel);
+//            String greenBinary = Integer.toBinaryString(greenPixel);
+//            String blueBinary = Integer.toBinaryString(bluePixel);
+//
+//            String r = redBinary.substring(redBinary.length() - 1, redBinary.length());
+//            String g = greenBinary.substring(greenBinary.length() - 1, greenBinary.length());
+//            String b = blueBinary.substring(blueBinary.length() - 1, blueBinary.length());
+//
+//            extractedBinStr += r + g + b;
+//
+//        }
+        int index = 0;
+        labelA:
         for (int i = 0; i < bitHeight; i++) {
             for (int j = 0; j < bitWidth; j++) {
-
                 int pixel = bi.getPixel(j, i);
+                Log.e(TAG, "extractMessage: " + pixel + "--" + pixels[index++]);
 
                 int redPixel = (pixel >> 16) & 0xff;
+
                 String redBinStr = Integer.toBinaryString(redPixel);
                 String redLastBin = redBinStr.substring(redBinStr.length() - 1, redBinStr.length());
+                checkBuild.append(redBinStr + "-->");
                 curIndex++;
                 if (curIndex <= Integer.SIZE) {
                     requirePixelStr += redLastBin;
                     if (curIndex == Integer.SIZE) {
-                        requirePixel = Integer.valueOf(requirePixelStr, 2);
+                        requirePixel = Integer.valueOf(requirePixelStr, 2) + Integer.SIZE;
                     }
                 } else {
                     extractedBinStr += redLastBin;
-                    if (curIndex > requirePixel) {
-                        break;
+                    if (curIndex >= requirePixel) {
+                        break labelA;
                     }
                 }
 
                 int greenPixel = (pixel >> 8) & 0xff;
                 String greenBinStr = Integer.toBinaryString(greenPixel);
                 String greenLastBin = greenBinStr.substring(greenBinStr.length() - 1, greenBinStr.length());
+                checkBuild.append(greenBinStr + "-->");
                 curIndex++;
                 if (curIndex <= Integer.SIZE) {
                     requirePixelStr += greenLastBin;
                     if (curIndex == Integer.SIZE) {
-                        requirePixel = Integer.valueOf(requirePixelStr, 2);
+                        requirePixel = Integer.valueOf(requirePixelStr, 2) + Integer.SIZE;
                     }
                 } else {
-                    extractedBinStr += redLastBin;
-                    if (curIndex > requirePixel) {
-                        break;
+                    extractedBinStr += greenLastBin;
+                    if (curIndex >= requirePixel) {
+                        break labelA;
                     }
                 }
 
                 int bluePixel = (pixel) & 0xff;
                 String blueBinStr = Integer.toBinaryString(bluePixel);
                 String blueLastBin = blueBinStr.substring(blueBinStr.length() - 1, blueBinStr.length());
+                checkBuild.append(blueLastBin + "-->");
                 curIndex++;
                 if (curIndex <= Integer.SIZE) {
                     requirePixelStr += blueLastBin;
                     if (curIndex == Integer.SIZE) {
-                        requirePixel = Integer.valueOf(requirePixelStr, 2);
+                        requirePixel = Integer.valueOf(requirePixelStr, 2) + Integer.SIZE;
                     }
                 } else {
-                    extractedBinStr += redLastBin;
-                    if (curIndex > requirePixel) {
-                        break;
+                    extractedBinStr += blueLastBin;
+                    if (curIndex >= requirePixel) {
+                        break labelA;
                     }
                 }
             }
+
         }
 
         String extractedText = generateString(extractedBinStr);
