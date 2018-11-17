@@ -40,7 +40,7 @@ public class DecodeProcessImpl extends AppCompatActivity implements View.OnClick
             Bitmap bi3 = ((BitmapDrawable) ivImageResult.getDrawable()).getBitmap();
             Bitmap bi2 = bi3.copy(Bitmap.Config.ARGB_8888, true);
 
-            String hasilExtract = Utils.extractMessage(bi2);
+            String hasilExtract = Utils.extractMessage2(bi2);
 
             EditText txtResult = (EditText) findViewById(R.id.etTextDecode);
             txtResult.setText(hasilExtract);

@@ -1,7 +1,11 @@
 package com.sample;
 
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Paint;
+import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -12,6 +16,7 @@ import android.util.Log;
 
 public class Utils {
     private static final String TAG = "Utils";
+    private static final String FLAG = "TAO";
 
     //字符串转二进制
     private static String str2Binary(String text) {
@@ -29,6 +34,7 @@ public class Utils {
         return builder.toString();
     }
 
+    //二进制生成字符串
     private static String generateString(String sb) {
         byte[] b = new byte[sb.length() / 8];
         int j = 0, k = 0;
@@ -43,17 +49,6 @@ public class Utils {
         return new String(b);
     }
 
-    private static void setBitmapPixel(Bitmap bitmap, int i, int j, int alpha, int red, int green, int blue) {
-        int rgba = (255) | (red << 16) | (green << 8) | (blue);
-        Log.e(TAG, "setBitmapPixel: " + rgba + "-->" + Integer.toBinaryString(red) + "--" + Integer.toBinaryString(green) + "--" + Integer.toBinaryString(blue));
-
-        int pixel = bitmap.getPixel(i, j);
-        bitmap.setPixel(i, j, rgba);
-        int pixel2 = bitmap.getPixel(i, j);
-
-        Log.e(TAG, "setBitmapPixel: " + pixel + "--->" + pixel2);
-    }
-
     //把int值转换成32位的二进制
     private static String transformIntTo32BitBinary(int value) {
         char[] chs = new char[Integer.SIZE];
@@ -63,34 +58,65 @@ public class Utils {
         return new String(chs);
     }
 
+    //校验文件是否含有flag标志 否则 认为不是一个合格的图片
+    private static boolean checkFlagValidate(int curPixelIndex, int flagSize, String binaryString) {
+        //如果 不包含flag  则认为图片没有需要的信息，直接结束了，下同
+        if (curPixelIndex == flagSize) {
+            String flag = generateString(binaryString);
+            return TextUtils.equals(flag, FLAG);
+        } else {
+            return true;
+        }
+    }
 
-    public static Bitmap insertMessage2(Bitmap bitmap, String text) {
-        String binaryString = str2Binary(text);
-        if (TextUtils.isEmpty(binaryString))
+    //校验数据块二进制的长度的int值
+    private static int checkChunkSizeValidate(int curPixelIndex, int minRequireSize, String binaryString) {
+        if (curPixelIndex == minRequireSize) {
+            try {
+                Integer valueOf = Integer.valueOf(binaryString, 2);
+                return valueOf;
+            } catch (Exception e) {
+                Log.e(TAG, "binarySafely2Int: " + e.getMessage());
+                return -1;
+            }
+        } else {
+            return 0;
+        }
+    }
+
+
+    public static Bitmap insertMessage3(@NonNull Bitmap bitmap, @NonNull String text) {
+        String dataBinaryString = str2Binary(text);
+        if (TextUtils.isEmpty(dataBinaryString))
             return null;
 
-        Bitmap mutable = bitmap.copy(bitmap.getConfig(), true);
-
-        int bitWidth = mutable.getWidth();
-        int bitHeight = mutable.getHeight();
-
-        long l = System.currentTimeMillis();
-        int[] pixels = new int[bitWidth * bitHeight];
-        mutable.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, bitHeight);
-        long l1 = System.currentTimeMillis();
-        Log.e(TAG, "insertMessage:cost time :" + (l1 - l));
-
-        String sizeBin = transformIntTo32BitBinary(binaryString.length());
-        String actualBinaryString = sizeBin + binaryString;
+        //组合成11100011 111100001111000 1110111011101110111011101100  识别的时候也是这样子
+        String flagBinaryString = str2Binary(FLAG);
+        String sizeBinaryString = transformIntTo32BitBinary(dataBinaryString.length());
+        String actualBinaryString = flagBinaryString + sizeBinaryString + dataBinaryString;
         int actualBinLen = actualBinaryString.length();
 
+        int bitWidth = bitmap.getWidth();
+        int bitHeight = bitmap.getHeight();
         //最低位有效
         if (bitWidth * bitHeight * 3 < actualBinLen)
-            return mutable;
+            return bitmap;
+
+        Bitmap mutable = bitmap.copy(bitmap.getConfig(), true);
+        //从原图中提取出仅需要的那几行 像素值
+        long start = System.currentTimeMillis();
+        int requireHeight;
+        if (actualBinLen <= bitWidth) {
+            requireHeight = 1;
+        } else {
+            requireHeight = actualBinLen / bitWidth + (actualBinLen % bitWidth == 0 ? 0 : 1);
+        }
+        int[] pixels = new int[bitWidth * requireHeight];
+        bitmap.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, requireHeight);
 
         int requirePixel = actualBinLen;
-        char[] chars = actualBinaryString.toCharArray();
         int curPixelIndex = -1;
+        char[] chars = actualBinaryString.toCharArray();
         StringBuilder binarybuilder = new StringBuilder();
         StringBuilder charbuilder = new StringBuilder();
         for (int i = 0; i < requirePixel; i++) {
@@ -101,253 +127,173 @@ public class Utils {
             int greenPixel = (pixel >> 8) & 0xff;
             int bluePixel = (pixel) & 0xff;
 
-            String redBinary = Integer.toBinaryString(redPixel);
-            String greenBinary = Integer.toBinaryString(greenPixel);
-            String blueBinary = Integer.toBinaryString(bluePixel);
-
             curPixelIndex++;
             if (curPixelIndex >= requirePixel) {
                 int color = Color.argb(alpha, redPixel, greenPixel, bluePixel);
                 pixels[i] = color;
-                binarybuilder.append(redBinary + "-->" + greenBinary + "-->" + blueBinary);
+                binarybuilder.append(Integer.toBinaryString(redPixel) + "-->" + Integer.toBinaryString(greenPixel) + "-->" + Integer.toBinaryString(bluePixel));
                 break;
             }
 
             char rChar = chars[curPixelIndex];
-            redBinary = redBinary.substring(0, redBinary.length() - 1) + rChar;
-            redPixel = Integer.valueOf(redBinary, 2);
+            if (rChar == 49) {
+                redPixel |= (0b00000001);
+            } else {
+                redPixel &= (0b11111110);
+            }
             charbuilder.append(rChar);
             curPixelIndex++;
             if (curPixelIndex >= requirePixel) {
                 int color = Color.argb(alpha, redPixel, greenPixel, bluePixel);
                 pixels[i] = color;
-                binarybuilder.append(redBinary + "-->" + greenBinary + "-->" + blueBinary);
+                binarybuilder.append(Integer.toBinaryString(redPixel) + "-->" + Integer.toBinaryString(greenPixel) + "-->" + Integer.toBinaryString(bluePixel));
                 break;
             }
 
             char gChar = chars[curPixelIndex];
-            greenBinary = greenBinary.substring(0, greenBinary.length() - 1) + gChar;
-            greenPixel = Integer.valueOf(greenBinary, 2);
+            if (gChar == 49) {
+                greenPixel |= (0b00000001);
+            } else {
+                greenPixel &= (0b11111110);
+            }
             charbuilder.append(gChar);
             curPixelIndex++;
             if (curPixelIndex >= requirePixel) {
                 int color = Color.argb(alpha, redPixel, greenPixel, bluePixel);
                 pixels[i] = color;
-                binarybuilder.append(redBinary + "-->" + greenBinary + "-->" + blueBinary);
+                binarybuilder.append(Integer.toBinaryString(redPixel) + "-->" + Integer.toBinaryString(greenPixel) + "-->" + Integer.toBinaryString(bluePixel));
                 break;
             }
 
             char bChar = chars[curPixelIndex];
-            blueBinary = blueBinary.substring(0, blueBinary.length() - 1) + bChar;
-            bluePixel = Integer.valueOf(blueBinary, 2);
+            if (bChar == 49) {
+                bluePixel |= (0b00000001);
+            } else {
+                bluePixel &= (0b11111110);
+            }
             int color = Color.argb(alpha, redPixel, greenPixel, bluePixel);
             pixels[i] = color;
             charbuilder.append(bChar);
-            binarybuilder.append(redBinary + "-->" + greenBinary + "-->" + blueBinary + "-->");
+            binarybuilder.append(Integer.toBinaryString(redPixel) + "-->" + Integer.toBinaryString(greenPixel) + "-->" + Integer.toBinaryString(bluePixel));
 
         }
 
         String checkString = charbuilder.toString();
-        Log.e(TAG, "insertMessage2: " + TextUtils.equals(checkString, actualBinaryString));
+        Log.e(TAG, "insertMessage3: " + TextUtils.equals(checkString, actualBinaryString));
+        //用新像素生成新的位图
+        Bitmap pixelBitmap = Bitmap.createBitmap(pixels, bitWidth, requireHeight, mutable.getConfig());
+        //从原图截取出像素没动过的位图
+        Bitmap clipBitmap = Bitmap.createBitmap(mutable, 0, requireHeight, bitWidth, bitHeight - requireHeight);
+        //合成新的位图
+        Bitmap resultBitmap = Bitmap.createBitmap(bitWidth, bitHeight, mutable.getConfig());
+        Canvas canvas = new Canvas(resultBitmap);
+        canvas.drawBitmap(pixelBitmap, 0, 0, null);
+        canvas.drawBitmap(clipBitmap, 0, requireHeight, null);
 
-        Bitmap bitmap1 = Bitmap.createBitmap(pixels, bitWidth, bitHeight, mutable.getConfig());
-//        for (int i = 0; i < bitHeight; i++) {
-//            for (int j = 0; j < bitWidth; j++) {
-//                int pix = bitmap1.getPixel(j, i);
-//                Log.e(TAG, "insertMessage2: " + ((i + 1) * j) + "--" + pix + "---" + pixels[(i + 1) * j]);
-//            }
-//        }
-        return bitmap1;
+        long end = System.currentTimeMillis();
+        Log.e(TAG, "insertMessage3---> 提取像素耗时：" + (end - start));
+        int[] newPixels = new int[bitWidth];
+        resultBitmap.getPixels(newPixels, 0, bitWidth, 0, 0, bitWidth, 1);
+//        mutable.recycle();
+//        pixelBitmap.recycle();
+//        clipBitmap.recycle();
+
+        for (int i = 0; i < newPixels.length; i++) {
+            int pixel = pixels[i];
+            int redPixel = (pixel >> 16) & 0xff;
+            int greenPixel = (pixel >> 8) & 0xff;
+            int bluePixel = (pixel) & 0xff;
+            Log.e(TAG, "insertMessage3: " + pixel + "--" + (redPixel) + "--" + greenPixel + "--" + bluePixel);
+        }
+        return resultBitmap;
+
     }
 
+    public static String extractMessage2(@NonNull Bitmap bitmap) {
 
-    public static Bitmap insertMessage(Bitmap bitmap, String text) {
-        String binaryString = str2Binary(text);
-        if (TextUtils.isEmpty(binaryString))
-            return null;
+        int bitWidth = bitmap.getWidth();
+        int bitHeight = bitmap.getHeight();
 
-        Bitmap mutable = bitmap.copy(bitmap.getConfig(), true);
+        int curPixelIndex = 0;//记录RGB通道累加 计数器
+        int flagSize = str2Binary(FLAG).length();//flag位的长度
+        int minRequireSize = Integer.SIZE + flagSize;//flag位+数据块int转换成二进制后的长度，也是要求的最小有效长度
+        int maxValidateSize = minRequireSize;//flag位+数据块int值二进制长度+数据块二进制长度
 
-        int bitWidth = mutable.getWidth();
-        int bitHeight = mutable.getHeight();
+        String flagBinaryString = "";
+        String sizeBinaryString = "";
+        String extractedBinaryString = "";
 
-        long l = System.currentTimeMillis();
-        int[] pixels = new int[bitWidth * bitHeight];
-        mutable.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, bitHeight);
-        long l1 = System.currentTimeMillis();
-        Log.e(TAG, "insertMessage:cost time :" + (l1 - l));
-
-        String actualBinaryString = transformIntTo32BitBinary(binaryString.length()) + binaryString;
-        int actualBinLen = actualBinaryString.length();
-
-        //最低位有效
-        if (bitWidth * bitHeight * 3 < actualBinLen)
-            return mutable;
-
-        int requirePixel = actualBinLen;
-        char[] chars = actualBinaryString.toCharArray();
-        int curPixelIndex = 0;
         StringBuilder sb = new StringBuilder();
-
-        for (int i = 0; i < bitHeight; i++) {
-            for (int j = 0; j < bitWidth; j++) {
-                int pixel = mutable.getPixel(j, i);
-                int alpha = (pixel >> 24) & 0xff;
-                int redPixel = (pixel >> 16) & 0xff;
-                int greenPixel = (pixel >> 8) & 0xff;
-                int bluePixel = (pixel) & 0xff;
-
-                String redBinary = Integer.toBinaryString(redPixel);
-                String greenBinary = Integer.toBinaryString(greenPixel);
-                String blueBinary = Integer.toBinaryString(bluePixel);
-
-                Log.e(TAG, "insertMessage: " + pixel + "--" + redBinary + "--" + greenBinary + "--" + blueBinary);
-                int index = curPixelIndex == 0 ? 0 : curPixelIndex++;
-                if (curPixelIndex >= requirePixel) {
-                    setBitmapPixel(mutable, j, i, alpha, redPixel, greenPixel, bluePixel);
-                    break;
-                }
-
-                char rchar = chars[index];
-                char[] redChars = redBinary.toCharArray();
-                redChars[redChars.length - 1] = rchar;
-                redBinary = new String(redChars);
-                redPixel = Integer.valueOf(redBinary, 2);
-
-                curPixelIndex++;
-                if (curPixelIndex >= requirePixel) {
-                    setBitmapPixel(mutable, j, i, alpha, redPixel, greenPixel, bluePixel);
-                    break;
-                }
-                char gchar = chars[curPixelIndex];
-                char[] greenChars = greenBinary.toCharArray();
-                greenChars[greenChars.length - 1] = gchar;
-                greenBinary = new String(greenChars);
-                greenPixel = Integer.valueOf(greenBinary, 2);
-
-                curPixelIndex++;
-                if (curPixelIndex >= requirePixel) {
-                    setBitmapPixel(mutable, j, i, alpha, redPixel, greenPixel, bluePixel);
-                    break;
-                }
-                char bchar = chars[curPixelIndex];
-                sb.append(bchar);
-                char[] blueChars = blueBinary.toCharArray();
-                blueChars[blueChars.length - 1] = bchar;
-                blueBinary = new String(blueChars);
-                bluePixel = Integer.valueOf(blueBinary, 2);
-                setBitmapPixel(mutable, j, i, alpha, redPixel, greenPixel, bluePixel);
-            }
-        }
-
-        Log.e(TAG, "insertMessage: " + sb.toString());
-
-        return mutable;
-    }
-
-
-    public static String extractMessage(Bitmap bi) {
-
-        int bitWidth = bi.getWidth();
-        int bitHeight = bi.getHeight();
-
-
-        if (bitWidth * bitHeight * 3 < Integer.SIZE)
+        if (bitWidth * bitHeight * 3 < minRequireSize)
             return null;
 
-        int curIndex = 0;
-        int requirePixel = Integer.SIZE;
-        String requirePixelStr = "";
-        String extractedBinStr = "";
-
-        StringBuilder checkBuild = new StringBuilder();
-        long l = System.currentTimeMillis();
-        int[] pixels = new int[bitWidth * bitHeight];
-        bi.getPixels(pixels, 0, bitWidth, 0, 0, bitWidth, bitHeight);
-        long l1 = System.currentTimeMillis();
-//
-//        for (int i = 0; i < 30; i++) {
-//            int pixel = pixels[i];
-//
-//            int alpha = (pixel >> 24) & 0xff;
-//            int redPixel = (pixel >> 16) & 0xff;
-//            int greenPixel = (pixel >> 8) & 0xff;
-//            int bluePixel = (pixel) & 0xff;
-//
-//            String redBinary = Integer.toBinaryString(redPixel);
-//            String greenBinary = Integer.toBinaryString(greenPixel);
-//            String blueBinary = Integer.toBinaryString(bluePixel);
-//
-//            String r = redBinary.substring(redBinary.length() - 1, redBinary.length());
-//            String g = greenBinary.substring(greenBinary.length() - 1, greenBinary.length());
-//            String b = blueBinary.substring(blueBinary.length() - 1, blueBinary.length());
-//
-//            extractedBinStr += r + g + b;
-//
-//        }
-        int index = 0;
-        labelA:
+        long start = System.currentTimeMillis();
+        SKIP:
         for (int i = 0; i < bitHeight; i++) {
             for (int j = 0; j < bitWidth; j++) {
-                int pixel = bi.getPixel(j, i);
-                Log.e(TAG, "extractMessage: " + pixel + "--" + pixels[index++]);
+                int pixel = bitmap.getPixel(j, i);
+                //ignore alpha channel
 
-                int redPixel = (pixel >> 16) & 0xff;
-
-                String redBinStr = Integer.toBinaryString(redPixel);
-                String redLastBin = redBinStr.substring(redBinStr.length() - 1, redBinStr.length());
-                checkBuild.append(redBinStr + "-->");
-                curIndex++;
-                if (curIndex <= Integer.SIZE) {
-                    requirePixelStr += redLastBin;
-                    if (curIndex == Integer.SIZE) {
-                        requirePixel = Integer.valueOf(requirePixelStr, 2) + Integer.SIZE;
-                    }
+                //red channel  last bit
+                curPixelIndex++;
+                int rlBit = ((pixel >> 16) & 0xff) & 1;
+                sb.append(rlBit);
+                if (curPixelIndex <= flagSize) {
+                    flagBinaryString += rlBit;
+                    if (!checkFlagValidate(curPixelIndex, flagSize, flagBinaryString)) break SKIP;
+                } else if (curPixelIndex <= minRequireSize) {
+                    sizeBinaryString += rlBit;
+                    maxValidateSize += checkChunkSizeValidate(curPixelIndex, minRequireSize, sizeBinaryString);
+                    if (maxValidateSize < 0) break SKIP;
+                } else if (curPixelIndex <= maxValidateSize) {
+                    extractedBinaryString += rlBit;
                 } else {
-                    extractedBinStr += redLastBin;
-                    if (curIndex >= requirePixel) {
-                        break labelA;
-                    }
+                    break SKIP;
                 }
 
-                int greenPixel = (pixel >> 8) & 0xff;
-                String greenBinStr = Integer.toBinaryString(greenPixel);
-                String greenLastBin = greenBinStr.substring(greenBinStr.length() - 1, greenBinStr.length());
-                checkBuild.append(greenBinStr + "-->");
-                curIndex++;
-                if (curIndex <= Integer.SIZE) {
-                    requirePixelStr += greenLastBin;
-                    if (curIndex == Integer.SIZE) {
-                        requirePixel = Integer.valueOf(requirePixelStr, 2) + Integer.SIZE;
-                    }
+                //green channel  last bit
+                curPixelIndex++;
+                int glBit = ((pixel >> 8) & 0xff) & 1;
+                sb.append(glBit);
+                if (curPixelIndex <= flagSize) {
+                    //如果 不包含flag  则认为图片没有需要的信息，直接结束了，下同
+                    flagBinaryString += glBit;
+                    if (!checkFlagValidate(curPixelIndex, flagSize, flagBinaryString)) break SKIP;
+                } else if (curPixelIndex <= minRequireSize) {
+                    sizeBinaryString += glBit;
+                    maxValidateSize += checkChunkSizeValidate(curPixelIndex, minRequireSize, sizeBinaryString);
+                    if (maxValidateSize < 0) break SKIP;
+                } else if (curPixelIndex <= maxValidateSize) {
+                    extractedBinaryString += glBit;
                 } else {
-                    extractedBinStr += greenLastBin;
-                    if (curIndex >= requirePixel) {
-                        break labelA;
-                    }
+                    break SKIP;
                 }
 
-                int bluePixel = (pixel) & 0xff;
-                String blueBinStr = Integer.toBinaryString(bluePixel);
-                String blueLastBin = blueBinStr.substring(blueBinStr.length() - 1, blueBinStr.length());
-                checkBuild.append(blueLastBin + "-->");
-                curIndex++;
-                if (curIndex <= Integer.SIZE) {
-                    requirePixelStr += blueLastBin;
-                    if (curIndex == Integer.SIZE) {
-                        requirePixel = Integer.valueOf(requirePixelStr, 2) + Integer.SIZE;
-                    }
+                //blue channel  last bit
+                curPixelIndex++;
+                int blBit = ((pixel) & 0xff) & 1;
+                sb.append(blBit);
+                if (curPixelIndex <= flagSize) {
+                    //如果 不包含flag  则认为图片没有需要的信息，直接结束了，下同
+                    flagBinaryString += blBit;
+                    if (!checkFlagValidate(curPixelIndex, flagSize, flagBinaryString)) break SKIP;
+                } else if (curPixelIndex <= minRequireSize) {
+                    sizeBinaryString += blBit;
+                    maxValidateSize += checkChunkSizeValidate(curPixelIndex, minRequireSize, sizeBinaryString);
+                    if (maxValidateSize < 0) break SKIP;
+                } else if (curPixelIndex <= maxValidateSize) {
+                    extractedBinaryString += blBit;
                 } else {
-                    extractedBinStr += blueLastBin;
-                    if (curIndex >= requirePixel) {
-                        break labelA;
-                    }
+                    break SKIP;
                 }
+
             }
 
         }
 
-        String extractedText = generateString(extractedBinStr);
+        String extractedText = generateString(extractedBinaryString);
+        long end = System.currentTimeMillis();
+        Log.e(TAG, "extractMessage2: 解码耗时时间" + (end - start));
         return extractedText;
     }
 }

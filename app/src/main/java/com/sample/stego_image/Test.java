@@ -6,44 +6,40 @@ package com.sample.stego_image;
 
 public class Test {
     public static void main(String[] args) {
+        System.out.println((0b11110110 & 1));
+        System.out.println((0b11110111 & 1));
+        //checkSstring2Binary();
+    }
 
-//        String s = "message消息中文字符串二进制流弊不";
-//        //用StringBuffer来存储一长串的字符串转换成的比特流
-//        StringBuffer sb = new StringBuffer();
-//        String s1 = "";
-//        //获得字符串的字节码数组
-//        byte[] b = s.getBytes();
-//        int j = 1;
-//
-//        for (int i = 0; i < b.length; i++) {
-//            //将字节数组转换成二进制
-//            s1 = Integer.toBinaryString(b[i] & 0xff);
-//            if (s1.length() < 8) {
-//                s1 = "0" + s1;
-//            }
-//            System.out.println(j + "-----" + s1 + "--LEN:" + s1.length());
-//            sb.append(s1);
-//            j++;
-//        }
-//        System.out.println("1000的二进制"+Integer.toBinaryString(10));
-//        System.out.println(sb);
-//        getString(sb);
-//        System.out.println(0 & 0);
-//        System.out.println(0 & 1);
-//        System.out.println(Integer.toBinaryString(101 & 0b111));
-//        System.out.println(Integer.toBinaryString(100000 & 0xff));
-//        String bitBinary = transformIntTo32BitBinary(88);
-//        getString(new StringBuffer(bitBinary));
-        getString(null);
+    private static void checkSstring2Binary() {
+        String s = "TAO";
+        //用StringBuffer来存储一长串的字符串转换成的比特流
+        StringBuffer sb = new StringBuffer();
+        String s1 = "";
+        //获得字符串的字节码数组
+        byte[] b = s.getBytes();
+        int j = 1;
+
+        for (int i = 0; i < b.length; i++) {
+            //将字节数组转换成二进制
+            s1 = Integer.toBinaryString(b[i] & 0xff);
+            if (s1.length() < 8) {
+                s1 = "0" + s1;
+            }
+            sb.append(s1);
+            j++;
+        }
+        System.out.println(sb.toString());
+        checkBinary2String(sb);
     }
 
     //用存储二进制字符的StringBuffer长生字符串
-    public static void getString(StringBuffer sb) {
+    public static void checkBinary2String(StringBuffer sb) {
         //获得一串二进制字符
         //00000000000000000000000000111000
         //01101101011001010111001101110011011000010110011101100101
         //0110110101100101011100110111001101100001011001110110010
-        StringBuffer buffer = new StringBuffer("0110110101100101011100110111001101100001011001110110010");
+        StringBuffer buffer = sb;//new StringBuffer("0110110101100101011100110111001101100001011001110110010");
         //构造的字节数组长度仅为二进制字符流长度的1/8，否则空的字节数组部分会长生不必要的字符
         byte[] b = new byte[buffer.length() / 8];
         int j = 0, k = 0;

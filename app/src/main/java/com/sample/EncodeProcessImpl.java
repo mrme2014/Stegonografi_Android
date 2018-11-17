@@ -101,7 +101,7 @@ public class EncodeProcessImpl extends AppCompatActivity implements View.OnClick
             return;
         }
 
-        Bitmap encodeBitmap = Utils.insertMessage2(localBitmap, text);
+        Bitmap encodeBitmap = Utils.insertMessage3(localBitmap, text);
         saveImage(encodeBitmap);
         Toast.makeText(getApplicationContext(), "Image Saved ", Toast.LENGTH_LONG).show();
     }
