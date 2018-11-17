@@ -194,17 +194,10 @@ public class Utils {
         Log.e(TAG, "insertMessage3---> 提取像素耗时：" + (end - start));
         int[] newPixels = new int[bitWidth];
         resultBitmap.getPixels(newPixels, 0, bitWidth, 0, 0, bitWidth, 1);
-//        mutable.recycle();
-//        pixelBitmap.recycle();
-//        clipBitmap.recycle();
+        mutable.recycle();
+        pixelBitmap.recycle();
+        clipBitmap.recycle();
 
-        for (int i = 0; i < newPixels.length; i++) {
-            int pixel = pixels[i];
-            int redPixel = (pixel >> 16) & 0xff;
-            int greenPixel = (pixel >> 8) & 0xff;
-            int bluePixel = (pixel) & 0xff;
-            Log.e(TAG, "insertMessage3: " + pixel + "--" + (redPixel) + "--" + greenPixel + "--" + bluePixel);
-        }
         return resultBitmap;
 
     }
